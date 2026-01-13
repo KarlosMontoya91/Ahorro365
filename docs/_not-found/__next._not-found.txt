@@ -1,0 +1,4 @@
+1:"$Sreact.fragment"
+2:I[63189,["/Ahorro365/_next/static/chunks/88a57cb2644b9253.js","/Ahorro365/_next/static/chunks/b20e540ac344e827.js"],"default"]
+3:I[52415,["/Ahorro365/_next/static/chunks/88a57cb2644b9253.js","/Ahorro365/_next/static/chunks/b20e540ac344e827.js"],"default"]
+0:{"buildId":"gih93JLK-uEsqnJEXTVpK","rsc":["$","$1","c",{"children":[null,["$","$L2",null,{"parallelRouterKey":"children","template":["$","$L3",null,{}]}]]}],"loading":null,"isPartial":false}

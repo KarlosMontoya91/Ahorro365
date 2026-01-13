@@ -1,0 +1,6 @@
+1:"$Sreact.fragment"
+2:I[23037,["/Ahorro365/_next/static/chunks/dda46f3a209a6519.js","/Ahorro365/_next/static/chunks/31bc13972c6a8562.js","/Ahorro365/_next/static/chunks/deb29e126b7a9dbf.js","/Ahorro365/_next/static/chunks/807c069b957dfe01.js"],"default"]
+3:I[23515,["/Ahorro365/_next/static/chunks/88a57cb2644b9253.js","/Ahorro365/_next/static/chunks/b20e540ac344e827.js"],"OutletBoundary"]
+4:"$Sreact.suspense"
+0:{"buildId":"gih93JLK-uEsqnJEXTVpK","rsc":["$","$1","c",{"children":[["$","$L2",null,{}],[["$","script","script-0",{"src":"/Ahorro365/_next/static/chunks/807c069b957dfe01.js","async":true}]],["$","$L3",null,{"children":["$","$4",null,{"name":"Next.MetadataOutlet","children":"$@5"}]}]]}],"loading":null,"isPartial":false}
+5:null

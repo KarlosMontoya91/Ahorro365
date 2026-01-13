@@ -3,10 +3,12 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
-    "dev": "next dev",
-    "build": "next build",
-    "start": "next start",
-    "lint": "eslint"
+  "dev": "next dev",
+  "build": "next build",
+  "export": "next build && node scripts/export-to-docs.mjs",
+  "deploy": "npm run export",
+  "start": "next start",
+  "lint": "eslint"
   },
   "dependencies": {
     "@radix-ui/react-alert-dialog": "^1.1.15",

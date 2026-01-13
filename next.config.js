@@ -1,18 +1,16 @@
 /** @type {import('next').NextConfig} */
 const repo = "Ahorro365";
-const isProd = process.env.NODE_ENV === "production";
 
 const nextConfig = {
+  output: "export",
   trailingSlash: true,
-  images: { unoptimized: true },
 
-  ...(isProd
-    ? {
-        output: "export",
-        basePath: `/${repo}`,
-        assetPrefix: `/${repo}/`,
-      }
-    : {}),
+  // Para que rutas/assets funcionen en /Ahorro365
+  basePath: `/${repo}`,
+  assetPrefix: `/${repo}/`,
+
+  // Importante en GitHub Pages (no hay optimizador de imágenes server-side)
+  images: { unoptimized: true },
 };
 
 module.exports = nextConfig;
