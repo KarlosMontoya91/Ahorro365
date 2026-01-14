@@ -1,9 +1,9 @@
 1:"$Sreact.fragment"
 2:I[33897,["/Ahorro365/_next/static/chunks/88a57cb2644b9253.js","/Ahorro365/_next/static/chunks/b20e540ac344e827.js"],"ClientPageRoot"]
-3:I[71856,["/Ahorro365/_next/static/chunks/dda46f3a209a6519.js","/Ahorro365/_next/static/chunks/31bc13972c6a8562.js","/Ahorro365/_next/static/chunks/deb29e126b7a9dbf.js","/Ahorro365/_next/static/chunks/925727ee6f667479.js"],"default"]
+3:I[71856,["/Ahorro365/_next/static/chunks/dda46f3a209a6519.js","/Ahorro365/_next/static/chunks/6a42391d33b05e16.js","/Ahorro365/_next/static/chunks/deb29e126b7a9dbf.js","/Ahorro365/_next/static/chunks/925727ee6f667479.js"],"default"]
 6:I[23515,["/Ahorro365/_next/static/chunks/88a57cb2644b9253.js","/Ahorro365/_next/static/chunks/b20e540ac344e827.js"],"OutletBoundary"]
 7:"$Sreact.suspense"
-0:{"buildId":"rQ2MbkP8Dq7SIlCFhrefL","rsc":["$","$1","c",{"children":[["$","$L2",null,{"Component":"$3","serverProvidedParams":{"searchParams":{},"params":{},"promises":["$@4","$@5"]}}],[["$","script","script-0",{"src":"/Ahorro365/_next/static/chunks/925727ee6f667479.js","async":true}]],["$","$L6",null,{"children":["$","$7",null,{"name":"Next.MetadataOutlet","children":"$@8"}]}]]}],"loading":null,"isPartial":false}
+0:{"buildId":"5llMMTFhvB0RGIYCfWchj","rsc":["$","$1","c",{"children":[["$","$L2",null,{"Component":"$3","serverProvidedParams":{"searchParams":{},"params":{},"promises":["$@4","$@5"]}}],[["$","script","script-0",{"src":"/Ahorro365/_next/static/chunks/925727ee6f667479.js","async":true}]],["$","$L6",null,{"children":["$","$7",null,{"name":"Next.MetadataOutlet","children":"$@8"}]}]]}],"loading":null,"isPartial":false}
 4:{}
 5:"$0:rsc:props:children:0:props:serverProvidedParams:params"
 8:null

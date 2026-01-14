@@ -1,9 +1,11 @@
 "use client";
 
 import React, { useCallback, useEffect, useMemo, useState } from "react";
-import { signOut } from "firebase/auth";
-import { auth } from "@/src/lib/firebase";
+// --- FIREBASE IMPORTS ---
+import { doc, onSnapshot, setDoc, updateDoc } from "firebase/firestore";
+import { db } from "@/src/lib/firebase"; 
 import { useAuth } from "@/src/components/AuthProvider";
+// ------------------------
 
 import {
     ArrowDownRight,
@@ -26,7 +28,8 @@ import {
 } from "lucide-react";
 
 import { personalizedSavingsTips, type PersonalizedSavingsTipsOutput } from "@/src/ai/flows/personalized-savings-tips";
-import type { Goal, SavingsRecord } from "@/src/lib/types";
+// Nota: Definiré los tipos aquí mismo para asegurar compatibilidad con tu lógica original
+// import type { Goal, SavingsRecord } from "@/src/lib/types";
 
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
@@ -50,6 +53,31 @@ import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/co
 import { Separator } from "@/components/ui/separator";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+
+// --- TIPOS ADAPTADOS A TU LÓGICA ORIGINAL ---
+type SavingsRecord = {
+    day: number;      // El número de la tarjeta (1-365)
+    value: number;    // El monto
+    saved: boolean;   // Si se ahorró o se pospuso
+    date: string;     // Fecha ISO
+};
+
+type Goal = {
+    id: number;
+    name: string;
+    amount: number;
+    color: string;
+};
+
+// Estructura completa del usuario en BD
+type UserData = {
+    savingsHistory: SavingsRecord[];
+    goals: Goal[];
+    profile?: {
+        name: string;
+        avatar: string;
+    };
+};
 
 const TOTAL_DAYS = 365;
 
@@ -287,11 +315,11 @@ function SideMenu({
                             variant="outline"
                             className="w-full justify-start text-base pill border-white/15 bg-white/5 hover:bg-white/10"
                             onClick={() => {
-                                signOut(auth);
+                                // signOut(auth); // Lo hará el AuthProvider
                                 setIsOpen(false);
                             }}
                         >
-                            Cerrar sesión
+                            Cerrar panel
                         </Button>
                     </div>
 
@@ -328,8 +356,12 @@ function SideMenu({
     );
 }
 
+// =========================================================================
+// AQUÍ COMIENZA EL COMPONENTE PRINCIPAL (FUSIONADO CON FIREBASE)
+// =========================================================================
+
 export default function HomeClient() {
-    const { user, logout } = useAuth();
+    const { user, logout } = useAuth(); // Hook de autenticación
 
     const [isLoading, setIsLoading] = useState(true);
     const [screen, setScreen] = useState<"main" | "stats" | "profile" | "real_savings" | "goals">("main");
@@ -338,56 +370,82 @@ export default function HomeClient() {
     const [profileAvatar, setProfileAvatar] = useState<string>("https://placehold.co/100x100.png");
     const [goToProfileEdit, setGoToProfileEdit] = useState(false);
 
+    // ESTADOS DEL JUEGO
     const [savingsHistory, setSavingsHistory] = useState<SavingsRecord[]>([]);
     const [goals, setGoals] = useState<Goal[]>([]);
     const [remainingCards, setRemainingCards] = useState<number[]>([]);
     const [currentDrawnNumber, setCurrentDrawnNumber] = useState<number | null>(null);
     const [tipTrigger, setTipTrigger] = useState(0);
 
-    // Splash + load local
+    // 1. CARGA INICIAL Y SINCRONIZACIÓN CON FIREBASE (Sustituye a localStorage)
     useEffect(() => {
+        // Efecto de Splash Screen
         const t = setTimeout(() => setIsLoading(false), 900);
 
-        try {
-            const storedHistory = localStorage.getItem("savingsHistory");
-            const history: SavingsRecord[] = storedHistory ? JSON.parse(storedHistory) : [];
-            setSavingsHistory(history);
-
-            const storedGoals = localStorage.getItem("goals");
-            setGoals(storedGoals ? JSON.parse(storedGoals) : []);
-
-            const allCards = Array.from({ length: TOTAL_DAYS }, (_, i) => i + 1);
-            const usedCards = new Set(history.map((item) => item.value));
-            setRemainingCards(allCards.filter((card) => !usedCards.has(card)));
-
-            const storedProfile = localStorage.getItem("profile");
-            if (storedProfile) {
-                const p = JSON.parse(storedProfile);
-                if (p?.name) setProfileName(p.name);
-                if (p?.avatar) setProfileAvatar(p.avatar);
-            }
-        } catch {
-            setRemainingCards(Array.from({ length: TOTAL_DAYS }, (_, i) => i + 1));
-        }
-
-        return () => clearTimeout(t);
-    }, []);
-
-    // Sync profile from auth (si existe)
-    useEffect(() => {
         if (!user) return;
-        setProfileName(user.displayName || user.email || "Usuario");
-        setProfileAvatar(user.photoURL || "https://placehold.co/100x100.png");
+
+        // Conectar a Firestore en tiempo real
+        const userDocRef = doc(db, "users", user.uid);
+        const unsubscribe = onSnapshot(userDocRef, (docSnap) => {
+            if (docSnap.exists()) {
+                const data = docSnap.data() as UserData;
+                
+                // Cargar historial
+                const history = data.savingsHistory || [];
+                setSavingsHistory(history);
+
+                // Cargar metas
+                setGoals(data.goals || []);
+
+                // Cargar perfil
+                if (data.profile) {
+                    setProfileName(data.profile.name || user.displayName || "Usuario");
+                    setProfileAvatar(data.profile.avatar || user.photoURL || "");
+                }
+
+                // Calcular cartas restantes (Lógica del juego)
+                const allCards = Array.from({ length: TOTAL_DAYS }, (_, i) => i + 1);
+                // Si el valor ya está en el historial (ahorrado o pospuesto), ya se usó la carta
+                const usedValues = new Set(history.map((item) => item.value));
+                setRemainingCards(allCards.filter((card) => !usedValues.has(card)));
+
+            } else {
+                // Si es usuario nuevo, inicializar DB
+                const initialData: UserData = {
+                    savingsHistory: [],
+                    goals: [],
+                    profile: {
+                        name: user.displayName || "Usuario",
+                        avatar: user.photoURL || ""
+                    }
+                };
+                setDoc(userDocRef, initialData, { merge: true });
+                setRemainingCards(Array.from({ length: TOTAL_DAYS }, (_, i) => i + 1));
+            }
+        });
+
+        return () => {
+            clearTimeout(t);
+            unsubscribe();
+        };
     }, [user]);
 
-    // Persist
-    useEffect(() => {
+    // Función auxiliar para guardar en Firebase (Sustituye a localStorage.setItem)
+    const saveToFirebase = async (newHistory: SavingsRecord[], newGoals: Goal[], newProfile?: { name: string, avatar: string }) => {
+        if (!user) return;
+        const userDocRef = doc(db, "users", user.uid);
         try {
-            localStorage.setItem("savingsHistory", JSON.stringify(savingsHistory));
-            localStorage.setItem("goals", JSON.stringify(goals));
-            localStorage.setItem("profile", JSON.stringify({ name: profileName, avatar: profileAvatar }));
-        } catch { }
-    }, [savingsHistory, goals, profileName, profileAvatar]);
+            await updateDoc(userDocRef, {
+                savingsHistory: newHistory,
+                goals: newGoals,
+                ...(newProfile && { profile: newProfile })
+            });
+        } catch (e) {
+            console.error("Error guardando en nube:", e);
+        }
+    };
+
+    // --- LÓGICA DE NEGOCIO ORIGINAL ---
 
     const { savedRecords, totalSavings, totalPostponed, progressPercent, drawnCount, remainingDays } = useMemo(() => {
         const saved = savingsHistory.filter((item) => item.saved);
@@ -435,50 +493,74 @@ export default function HomeClient() {
     }, [remainingCards, currentDrawnNumber]);
 
     const handleCardAction = useCallback(
-        (saved: boolean) => {
+        async (saved: boolean) => {
             if (currentDrawnNumber === null) return;
 
             const newEntry: SavingsRecord = {
                 value: currentDrawnNumber,
                 saved,
-                date: new Date().toISOString().split("T")[0],
+                date: new Date().toISOString(),
                 day: savingsHistory.length + 1,
             };
 
-            setSavingsHistory((prev) => [...prev, newEntry]);
+            const updatedHistory = [...savingsHistory, newEntry];
+            
+            // Actualización optimista local
+            setSavingsHistory(updatedHistory);
             setRemainingCards((prev) => prev.filter((n) => n !== currentDrawnNumber));
             setCurrentDrawnNumber(null);
             setTipTrigger((c) => c + 1);
+
+            // Guardar en Nube
+            await saveToFirebase(updatedHistory, goals);
         },
-        [currentDrawnNumber, savingsHistory.length]
+        [currentDrawnNumber, savingsHistory, goals] // Dependencias
     );
 
-    const handleReset = useCallback(() => {
+    const handleReset = useCallback(async () => {
         setSavingsHistory([]);
         setGoals([]);
         setRemainingCards(Array.from({ length: TOTAL_DAYS }, (_, i) => i + 1));
         setCurrentDrawnNumber(null);
+        await saveToFirebase([], []); // Borrar en nube
     }, []);
 
-    const handleSavePostponed = useCallback((day: number) => {
-        setSavingsHistory((prev) =>
-            prev.map((item) => (item.day === day ? { ...item, saved: true, date: new Date().toISOString().split("T")[0] } : item))
+    const handleSavePostponed = useCallback(async (day: number) => {
+        const updatedHistory = savingsHistory.map((item) => 
+            item.day === day ? { ...item, saved: true, date: new Date().toISOString() } : item
         );
-    }, []);
+        setSavingsHistory(updatedHistory);
+        await saveToFirebase(updatedHistory, goals);
+    }, [savingsHistory, goals]);
 
-    const handleAddGoal = useCallback((name: string, amount: number, color: string) => {
+    const handleAddGoal = useCallback(async (name: string, amount: number, color: string) => {
         const newGoal: Goal = { id: Date.now(), name, amount, color };
-        setGoals((prev) => [...prev, newGoal]);
-    }, []);
+        const updatedGoals = [...goals, newGoal];
+        setGoals(updatedGoals);
+        await saveToFirebase(savingsHistory, updatedGoals);
+    }, [goals, savingsHistory]);
 
-    const handleDeleteGoal = useCallback((id: number) => {
-        setGoals((prev) => prev.filter((g) => g.id !== id));
-    }, []);
+    const handleDeleteGoal = useCallback(async (id: number) => {
+        const updatedGoals = goals.filter((g) => g.id !== id);
+        setGoals(updatedGoals);
+        await saveToFirebase(savingsHistory, updatedGoals);
+    }, [goals, savingsHistory]);
 
     const handleAvatarFile = async (file: File) => {
         const reader = new FileReader();
-        reader.onload = () => setProfileAvatar(reader.result as string);
+        reader.onload = async () => {
+            const base64 = reader.result as string;
+            setProfileAvatar(base64);
+            // Guardar perfil en nube
+            await saveToFirebase(savingsHistory, goals, { name: profileName, avatar: base64 });
+        };
         reader.readAsDataURL(file);
+    };
+
+    const handleSaveProfileName = async () => {
+        await saveToFirebase(savingsHistory, goals, { name: profileName, avatar: profileAvatar });
+        setGoToProfileEdit(false);
+        setScreen("main");
     };
 
     const currentDate = useMemo(() => new Date().toLocaleDateString("es-ES", { day: "numeric", month: "long" }), []);
@@ -489,6 +571,8 @@ export default function HomeClient() {
         value: { label: "Ahorro", color: "hsl(var(--chart-1))" },
         total: { label: "Ahorro", color: "hsl(var(--chart-1))" },
     };
+
+    // --- RENDER DE LA UI ORIGINAL ---
 
     const renderHeader = (title: string) => (
         <header className="flex items-center justify-between gap-3">
@@ -630,7 +714,7 @@ export default function HomeClient() {
             <PersonalizedTip history={savingsHistory} trigger={tipTrigger} />
 
             {currentDrawnNumber !== null && (
-                <div className="glass neon-outline card-radius p-5">
+                <div className="glass neon-outline card-radius p-5 animate-in fade-in zoom-in">
                     <p className="text-xs text-muted-foreground">Tarjeta del día</p>
                     <p className="mt-2 text-6xl font-black text-[hsl(var(--primary))] tabular-nums">${currentDrawnNumber}</p>
 
@@ -789,7 +873,7 @@ export default function HomeClient() {
                     <AvatarFallback>{profileName?.[0]?.toUpperCase() ?? "U"}</AvatarFallback>
                 </Avatar>
                 <h2 className="mt-3 text-2xl font-black">{profileName}</h2>
-                <p className="text-xs text-muted-foreground">ID: 8676113636</p>
+                <p className="text-xs text-muted-foreground">ID: {user?.uid.slice(0, 8) || "Anon"}</p>
             </div>
 
             <div className="glass neon-outline card-radius p-5">
@@ -841,10 +925,6 @@ export default function HomeClient() {
                         className="w-full pill"
                         onClick={async () => {
                             await logout();
-                            // opcional: si quieres también limpiar datos locales
-                            // localStorage.removeItem("profile");
-                            // localStorage.removeItem("savingsHistory");
-                            // localStorage.removeItem("goals");
                         }}
                     >
                         Salir / Cambiar cuenta
@@ -853,10 +933,7 @@ export default function HomeClient() {
 
                     <Button
                         className="w-full pill"
-                        onClick={() => {
-                            setGoToProfileEdit(false);
-                            setScreen("main");
-                        }}
+                        onClick={handleSaveProfileName}
                     >
                         Guardar cambios
                     </Button>
